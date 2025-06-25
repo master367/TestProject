@@ -1,10 +1,12 @@
 package com.company.testproject.entity;
 
+import io.jmix.core.metamodel.annotation.JmixEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@JmixEntity
 @Entity
 public class Transaction {
     @Id

@@ -2,6 +2,8 @@ package com.company.testproject.controller;
 
 import com.company.testproject.entity.Client;
 import io.jmix.core.DataManager;
+import io.jmix.core.security.SystemAuthenticator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +18,10 @@ import java.util.*;
 public class ClientRegistrationController {
     private final DataManager dataManager;
     private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private SystemAuthenticator systemAuthenticator;
+
     @Value("${spring.security.oauth2.authorizationserver.client.myclient.registration.client-id}")
     private String clientId;
 
@@ -29,26 +35,28 @@ public class ClientRegistrationController {
 
     @PostMapping
     public ResponseEntity<?> register(@RequestBody RegistrationRequest request) {
-        if (dataManager.load(Client.class).query("select c from Client c where c.email = :email")
-                .parameter("email", request.email)
-                .optional()
-                .isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Client with this email already exists");
-        }
+        return systemAuthenticator.withSystem(() -> {
+            if (dataManager.load(Client.class).query("select c from Client c where c.email = :email")
+                    .parameter("email", request.email)
+                    .optional()
+                    .isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Client with this email already exists");
+            }
 
-        Client client = dataManager.create(Client.class);
-        client.setEmail(request.email);
-        client.setPassword(passwordEncoder.encode(request.password));
-        client.setActive(true);
+            Client client = dataManager.create(Client.class);
+            client.setEmail(request.email);
+            client.setUsername(request.email);
+            client.setPassword(passwordEncoder.encode(request.password));
+            client.setActive(true);
+            dataManager.save(client);
 
-        dataManager.save(client);
-
-        try {
-            Map<String, Object> tokenResponse = requestToken(request.email, request.password);
-            return ResponseEntity.ok(tokenResponse);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Registered, but failed to get token: " + e.getMessage());
-        }
+            try {
+                Map<String, Object> tokenResponse = requestToken(request.email, request.password);
+                return ResponseEntity.ok(tokenResponse);
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Registered, but failed to get token: " + e.getMessage());
+            }
+        });
     }
 
     public static class RegistrationRequest {

@@ -1,8 +1,10 @@
 package com.company.testproject.entity;
 
+import io.jmix.core.metamodel.annotation.JmixEntity;
 import jakarta.persistence.*;
 import java.util.UUID;
 
+@JmixEntity
 @Entity
 public class BankAccount {
     @Id
